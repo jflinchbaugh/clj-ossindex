@@ -30,8 +30,11 @@
                     :content-type :json
                     :cookie-policy :none})
         ]
-    (pp/pprint (:status response))
-    (pp/pprint (json/parse-string (:body response) true))
+    (if (not= 200 (:status response))
+      (do
+        (println "FAILED")
+        (pp/pprint response))
+      (pp/pprint (json/parse-string (:body response) true)))
     ))
 
 
