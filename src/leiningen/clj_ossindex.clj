@@ -2,33 +2,9 @@
   (:require [leiningen.core.classpath :as cp]
             [leiningen.core.eval :as eval]
             [leiningen.deps :as d]
-            [clojure.pprint :as pp])
-  (:import [org.sonatype.ossindex.service.client
-            OssindexClient
-            OssindexClientConfiguration]
-           [org.sonatype.ossindex.service.client.internal
-            OssindexClientImpl
-            Version]
-           [org.sonatype.ossindex.service.client.transport
-            HttpClientTransport
-            UserAgentSupplier]
-           [org.sonatype.ossindex.service.client.marshal GsonMarshaller]
-           [org.sonatype.goodies.packageurl PackageUrl PackageUrl$Builder]))
-
-(defn- create-client-version [] (Version. Version))
-
-(defn- create-user-agent-supplier [] (proxy [UserAgentSupplier] [(create-client-version)]))
-
-(defn- create-http-client-transport [] (HttpClientTransport. (create-user-agent-supplier)))
-
-(defn- create-marshaller [] (GsonMarshaller.))
-
-(defn- create-client-config [] (OssindexClientConfiguration.))
-
-(defn- create-client [client-config] (OssindexClientImpl.
-                                      client-config
-                                      (create-http-client-transport)
-                                      (create-marshaller)))
+            [clojure.pprint :as pp]
+            [clj-http.client :as client]
+            [cheshire.core :as json]))
 
 (defn- flatten-map [m]
   (->> [nil m]
@@ -41,23 +17,24 @@
   )
 
 (defn- make-purl [[full-name version]]
-  (PackageUrl/parse (str "pkg:maven/" (name full-name))))
+  (str "pkg:maven/" (name full-name) "@" version))
 
 (defn clj-ossindex
   "I don't do a lot."
   [project & args]
   (let [classpath (->> project cp/get-classpath (filter #(.endsWith % ".jar")))
-        client (create-client (create-client-config))
         deps (map make-purl (dependencies project))
-        reports (.requestComponentReports client (take 1 deps))
+        response (client/post
+                   "https://ossindex.sonatype.org/api/v3/component-report"
+                   {:body (json/generate-string {:coordinates deps})
+                    :content-type :json
+                    :cookie-policy :none})
         ]
-    (pp/pprint deps)
+    (pp/pprint (:status response))
+    (pp/pprint (json/parse-string (:body response) true))
     ))
 
 
 (comment
-
-  (proxy [UserAgentSupplier] [])
-
 
   nil)
