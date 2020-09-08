@@ -39,17 +39,21 @@
                    {:body (json/generate-string {:coordinates deps})
                     :content-type :json
                     :cookie-policy :none})
+        vulnerable (remove
+                          #(empty? (:vulnerabilities %))
+                          (json/parse-string (:body response) true))
         ]
     (println "Evaluating:")
     (pprint deps)
-    (println "Vulnerabilities:")
     (if (not= 200 (:status response))
       (do
         (println "FAILED")
         (pprint response))
-      (pprint (remove #(empty? (:vulnerabilities %)) (json/parse-string (:body response) true))))
-    )
-  )
+      (do 
+        (println "Vulnerabilities:")
+        (if (empty? vulnerable)
+          (println "All good.")
+          (pprint vulnerable))))))
 
 
 (comment
